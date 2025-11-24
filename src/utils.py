@@ -1,7 +1,6 @@
 import re
 import jieba
 import pandas as pd
-import numpy as np
 
 def clamp_level(level):
     return min(level, 6)
@@ -15,8 +14,9 @@ def clean_chinese_text(text):
     text = re.sub(r'[a-zA-Z]', '', text)
     return text.strip()
 
+
 def load_hsk_data(file_path):
-    
+
     df = pd.read_csv(file_path, header=None)
     df.columns = ['content', 'level', 'type']
     
@@ -36,24 +36,26 @@ def load_hsk_data(file_path):
             word_dict[content] = level
         
         elif dtype == 'grammar':
+            
             safe_pattern = content.replace('(', '\\(').replace(')', '\\)')
             safe_pattern = safe_pattern.replace('[', '\\[').replace(']', '\\]')
             safe_pattern = safe_pattern.replace('?', '\\?')
             safe_pattern = safe_pattern.replace('+', '\\+')
             safe_pattern = safe_pattern.replace('*', '\\*')
 
+           
             safe_pattern = safe_pattern.replace('...', '.+')
             regex_pattern = re.sub(r'\s*[A-Z]+\s*', '.+', safe_pattern)
-
+            
             has_chinese = re.search(r'[\u4e00-\u9fff]', regex_pattern)
-
+            
             clean_check = regex_pattern.replace('.+', '').replace('\\', '').strip()
             is_empty = len(clean_check) == 0
-
+            
             if not has_chinese or is_empty:
-                continue
-
-            grammar_patterns.append((regex_pattern, clamp_level(level)))
+                continue 
+            
+            grammar_patterns.append((regex_pattern, level))
 
     return word_dict, grammar_patterns
 
