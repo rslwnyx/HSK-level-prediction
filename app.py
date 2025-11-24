@@ -10,12 +10,10 @@ st.set_page_config(page_title="HSK AI Predictor", page_icon="🇨🇳", layout="
 
 @st.cache_resource
 def load_model_assets():
-    regressor = joblib.load(r'models/hsk_regressor.pkl')
+    classifier = joblib.load(r'models/hsk_classifier.pkl')
     tfidf = joblib.load(r'models/tfidf_vectorizer.pkl')
-    thresholds = joblib.load(r'models/hsk_thresholds.pkl')
-
     word_dict, grammar_patterns = joblib.load(r'models/hsk_assets.pkl')
-    return regressor, tfidf, thresholds, word_dict, grammar_patterns
+    return classifier, tfidf, word_dict, grammar_patterns
 
 
 def main():
@@ -43,11 +41,9 @@ def main():
                 
                 final_input = sp.hstack((tfidf_feats, [stat_feats]))
                 
-                pred_score = model.predict(final_input)[0]
-                pred_score = max(0, min(500, pred_score)) # 0-500 clip
+                pred_class = model.predict(final_input)[0]
+                final_level = int(pred_class)
                 
-                level_idx = np.digitize(pred_score, thresholds, right=True)
-                final_level = int(max(1, min(6, level_idx)))
                 
 
                 st.divider()
@@ -55,7 +51,7 @@ def main():
                 with c1:
                     st.metric("Predicted Level: ", f"HSK {final_level}")
                 with c2:
-                    st.metric("Model Score (0-500)", f"{pred_score:.1f}")
+                    st.metric("Model Confidence: ", f"{np.max(model.predict_proba(final_input)):.2f}")
                 
                 st.subheader("Mathematical Analysis")
                 c3, c4 = st.columns(2)
