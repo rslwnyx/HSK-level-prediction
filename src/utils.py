@@ -41,11 +41,16 @@ def load_hsk_data(file_path):
             safe_pattern = safe_pattern.replace('?', '\\?')
             safe_pattern = safe_pattern.replace('+', '\\+')
             safe_pattern = safe_pattern.replace('*', '\\*')
-            safe_pattern = safe_pattern.replace('...', '.+')
 
+            safe_pattern = safe_pattern.replace('...', '.+')
             regex_pattern = re.sub(r'\s*[A-Z]+\s*', '.+', safe_pattern)
 
-            if not re.search(r'[\u4e00-\u9fff]', regex_pattern):
+            has_chinese = re.search(r'[\u4e00-\u9fff]', regex_pattern)
+
+            clean_check = regex_pattern.replace('.+', '').replace('\\', '').strip()
+            is_empty = len(clean_check) == 0
+
+            if not has_chinese or is_empty:
                 continue
 
             grammar_patterns.append((regex_pattern, clamp_level(level)))
