@@ -29,7 +29,7 @@ def main():
 
     if os.path.exists(cache_X) and os.path.exists(cache_y) and os.path.exists(cache_tfidf):
         X_final = joblib.load(cache_X)
-        y = joblib.load(cache_y)
+        y_hsk_level = joblib.load(cache_y)
         tfidf = joblib.load(cache_tfidf)
     
         word_dict, grammar_patterns = load_hsk_data(r"data\hsk_data.csv")
@@ -67,19 +67,19 @@ def main():
         y_hsk_level = np.digitize(df["total_score"].values, bins=final_thresholds[1:-1])
 
         joblib.dump(X_final, cache_X, compress=3)
-        joblib.dump(y, cache_y, compress=3)
+        joblib.dump(y_hsk_level, cache_y, compress=3)
         joblib.dump(tfidf, cache_tfidf, compress=3)
 
     # Train/Test Split
     X_train, X_test, y_train, y_test = train_test_split(X_final, y_hsk_level, test_size=0.2, random_state=42)
 
-    models = {"Logistic Regression": LogisticRegression(max_iter=300),
+    models = {"Logistic Regression": LogisticRegression(max_iter=1000),
               "Random Forest": RandomForestClassifier(n_estimators=100, max_depth=15, n_jobs=-1, random_state=42),
               "XGBoost": XGBClassifier(n_estimators = 60,max_depth = 6,   learning_rate = 0.1, n_jobs = -1, random_state = 42)
     }
 
     best_model = None
-    best_acc = float("inf")
+    best_acc = 0
     best_name = ""
 
     for name, model in models.items():
@@ -93,19 +93,16 @@ def main():
         print(f"\n{name} \nResults: Accuracy = {accuracy:.2f}\nMacro F1 = {f1:.2f}\n")
         
         if accuracy > best_acc:
-            best_acc = best_acc
+            best_acc = accuracy
             best_model = model
             best_name = name
     
     print(f"Best Model: {best_name}")
-
-    y_train_pred =best_model.predict(X_train)
     
 
     #Artifact saving
     joblib.dump(best_model, r"models/hsk_regressor.pkl", compress=3)
     joblib.dump(tfidf, r"models/tfidf_vectorizer.pkl", compress=3)
-    joblib.dump(final_thresholds, r"models/hsk_thresholds.pkl", compress=3)
     joblib.dump((word_dict, grammar_patterns), r"models/hsk_assets.pkl", compress=3)
 
 
