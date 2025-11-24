@@ -5,10 +5,10 @@ import scipy.sparse as sp
 import os
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import Ridge
-from sklearn.ensemble import RandomForestRegressor
-from xgboost import XGBRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, f1_score
 
 from src.utils import clean_chinese_text, load_hsk_data, extract_hsk_features, hsk_tokenizer
 
@@ -63,22 +63,23 @@ def main():
 
 
         X_final = sp.hstack((X_tfidf, X_stats))
-        y = df["total_score"].values
+        final_thresholds = np.array([0.0, 150.0, 220.0, 290.0, 360.0, 430.0, 500.0])
+        y_hsk_level = np.digitize(df["total_score"].values, bins=final_thresholds[1:-1])
 
         joblib.dump(X_final, cache_X, compress=3)
         joblib.dump(y, cache_y, compress=3)
         joblib.dump(tfidf, cache_tfidf, compress=3)
 
     # Train/Test Split
-    X_train, X_test, y_train, y_test = train_test_split(X_final, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X_final, y_hsk_level, test_size=0.2, random_state=42)
 
-    models = {"Ridge Regression": Ridge(alpha=1.0),
-              "Random Forest": RandomForestRegressor(n_estimators=50, max_depth=15, n_jobs=-1, random_state=42),
-              "XGBoost": XGBRegressor(n_estimators = 60,max_depth = 6,   learning_rate = 0.1, n_jobs = -1, random_state = 42)
+    models = {"Logistic Regression": LogisticRegression(max_iter=300),
+              "Random Forest": RandomForestClassifier(n_estimators=100, max_depth=15, n_jobs=-1, random_state=42),
+              "XGBoost": XGBClassifier(n_estimators = 60,max_depth = 6,   learning_rate = 0.1, n_jobs = -1, random_state = 42)
     }
 
     best_model = None
-    best_rmse = float("inf")
+    best_acc = float("inf")
     best_name = ""
 
     for name, model in models.items():
@@ -86,29 +87,19 @@ def main():
         model.fit(X_train, y_train)
 
         y_pred = model.predict(X_test)
-        rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-        r2 = r2_score(y_test, y_pred)
+        accuracy = accuracy_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred, average='macro')
 
-        print(f"\n{name} \nResults: RMSE = {rmse:.2f}\nR2 = {r2:.2f}\n")
+        print(f"\n{name} \nResults: Accuracy = {accuracy:.2f}\nMacro F1 = {f1:.2f}\n")
         
-        if rmse < best_rmse:
-            best_rmse = rmse
+        if accuracy > best_acc:
+            best_acc = best_acc
             best_model = model
             best_name = name
     
     print(f"Best Model: {best_name}")
 
     y_train_pred =best_model.predict(X_train)
-
-    #Threshold Calibration
-    # HSK 1: 0 - 150
-    # HSK 2: 150 - 220
-    # HSK 3: 220 - 290
-    # HSK 4: 290 - 360  (Ortalama yığılmanın olduğu yer)
-    # HSK 5: 360 - 430
-    # HSK 6: 430 - 500
-    
-    final_thresholds = np.array([0.0, 150.0, 220.0, 290.0, 360.0, 430.0, 500.0])
     
 
     #Artifact saving
