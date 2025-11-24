@@ -3,6 +3,10 @@ import jieba
 import pandas as pd
 import numpy as np
 
+def clamp_level(level):
+    return min(level, 6)
+
+
 def clean_chinese_text(text):
     if not isinstance(text, str):
         return ""
@@ -41,7 +45,7 @@ def load_hsk_data(file_path):
 
             regex_pattern = re.sub(r'\s*[A-Z]+\s*', '.+', safe_pattern)
 
-            grammar_patterns.append((regex_pattern, lambda level: min(level, 6)))
+            grammar_patterns.append((regex_pattern, clamp_level(level)))
 
     return word_dict, grammar_patterns
 
